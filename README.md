@@ -43,9 +43,9 @@ Topic	              Message Type	                      Description
 /battery_health	    diagnostic_msgs/DiagnosticArray	    Faults, cycle count, balance, status
 
 Parameters
-Name	          Type	    Default	  Description
-can_interface	  string	  can0	    Linux CAN interface name
-timer_period	  double	  1.0	      Polling rate (seconds)
-priority	      int	      0x18	    Daly CAN priority byte
-bms_address	    int	      0x01	    Address of BMS device
-pc_address	    int	      0x40	    Address claimed by ROS node
+Name				Type		Default		Description
+can_interface		string		can0		Linux CAN interface name
+timer_period		double		1.0			Polling rate (seconds)
+priority			int			0x18		Daly CAN priority byte
+bms_address			int			0x01		Address of BMS device
+pc_address			int			0x40		Address claimed by ROS node
