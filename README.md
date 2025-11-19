@@ -22,16 +22,20 @@ Simple, minimalistic Python implementation using rclpy + python-can
 Installation
 Place the package into your workspace:
 
+```bash
 cd ~/ros2_ws/src
 unzip amr_sweeper_battery.zip
 cd ..
 colcon build --packages-select amr_sweeper_battery
 source install/setup.bash
+```
 
 Bring up CAN
+```bash
 sudo ip link set can0 down
 sudo ip link set can0 type can bitrate 250000
 sudo ip link set can0 up
+```
 
 Run the Node
 ros2 launch amr_sweeper_battery battery.launch.py
