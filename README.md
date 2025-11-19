@@ -36,16 +36,78 @@ sudo ip link set can0 up
 Run the Node
 ros2 launch amr_sweeper_battery battery.launch.py
 
-Topics
-Published
-Topic	              Message Type	                      Description
-/battery_state	    sensor_msgs/BatteryState	          Voltage, current, SOC, cell data
-/battery_health	    diagnostic_msgs/DiagnosticArray	    Faults, cycle count, balance, status
+<h3>Topics</h3>
 
-Parameters
-Name				Type		Default		Description
-can_interface		string		can0		Linux CAN interface name
-timer_period		double		1.0			Polling rate (seconds)
-priority			int			0x18		Daly CAN priority byte
-bms_address			int			0x01		Address of BMS device
-pc_address			int			0x40		Address claimed by ROS node
+<table>
+  <thead>
+    <tr>
+      <th>Topic</th>
+      <th>Message Type</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>/battery_state</code></td>
+      <td><code>sensor_msgs/msg/BatteryState</code></td>
+      <td>
+        Pack voltage, current, SOC,<br>
+        per-cell voltages and per-sensor temperatures.
+      </td>
+    </tr>
+    <tr>
+      <td><code>/battery_health</code></td>
+      <td><code>diagnostic_msgs/msg/DiagnosticArray</code></td>
+      <td>
+        Fault flags, cycle count, remaining capacity,<br>
+        min/max cell voltage &amp; temperature, charger/load status,<br>
+        balancing cells, and other Daly BMS diagnostics.
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Parameters</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>can_interface</code></td>
+      <td><code>string</code></td>
+      <td><code>"can0"</code></td>
+      <td>Linux SocketCAN interface name.</td>
+    </tr>
+    <tr>
+      <td><code>timer_period</code></td>
+      <td><code>double</code></td>
+      <td><code>1.0</code></td>
+      <td>Polling period in seconds (1.0 = 1&nbsp;Hz).</td>
+    </tr>
+    <tr>
+      <td><code>priority</code></td>
+      <td><code>int</code></td>
+      <td><code>0x18</code></td>
+      <td>Daly CAN priority byte used in the arbitration ID.</td>
+    </tr>
+    <tr>
+      <td><code>bms_address</code></td>
+      <td><code>int</code></td>
+      <td><code>0x01</code></td>
+      <td>Daly BMS address byte.</td>
+    </tr>
+    <tr>
+      <td><code>pc_address</code></td>
+      <td><code>int</code></td>
+      <td><code>0x40</code></td>
+      <td>Address claimed by this ROS 2 node (PC/tool address).</td>
+    </tr>
+  </tbody>
+</table>
