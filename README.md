@@ -9,12 +9,17 @@ Communicates with Daly BMS using official 0x90–0x98 CAN protocol
 Classic CAN 2.0B extended frames, not CAN-FD
 
 Publishes:
-/battery_state (sensor_msgs/msg/BatteryState)
-    pack voltage, current, SOC
-    per-cell voltages
-    per-cell temperatures
-/battery_health (diagnostic_msgs/msg/DiagnosticArray)
-    faults, MOS states, balance status, cell extremes, remaining capacity, DI/DO states, etc.
+
+- `/battery_state` (`sensor_msgs/msg/BatteryState`)
+  - pack voltage, current, SOC
+  - per-cell voltages
+  - per-cell temperatures
+
+- `/battery_health` (`diagnostic_msgs/msg/DiagnosticArray`)
+  - faults, MOS states, balance status
+  - cell voltage extremes & temperature extremes
+  - remaining capacity (mAh)
+  - DI/DO states
 
 Simple, minimalistic Python implementation using rclpy + python-can
 1 Hz polling rate (configurable)
