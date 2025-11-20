@@ -35,6 +35,15 @@ colcon build --packages-select amr_sweeper_battery
 source install/setup.bash
 ```
 
+Be sure python3-can is installed, if not:
+```bash
+apt-get update
+apt-get install -y software-properties-common
+add-apt-repository universe
+apt-get update
+apt-get install -y python3-can
+```
+
 Bring up CAN if not already running
 ```bash
 sudo ip link set can0 down
