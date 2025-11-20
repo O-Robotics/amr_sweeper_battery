@@ -186,11 +186,15 @@ class DalyBmsCanNode(Node):
     def _decode_0x90(self, data: bytes) -> None:
         if len(data) < 8:
             return
-        gather_u16 = (data[2] << 8) | data[3]
+
+        # On your BMS:
+        #   bytes 0–1 = pack voltage (0.1 V)
+        #   bytes 2–3 = unused / second voltage (currently 0)
+        pack_u16 = (data[0] << 8) | data[1]
         curr_u16 = (data[4] << 8) | data[5]
         soc_u16 = (data[6] << 8) | data[7]
 
-        voltage = gather_u16 / 10.0
+        voltage = pack_u16 / 10.0
         current = (curr_u16 - 30000) / 10.0
         soc_percent = soc_u16 / 10.0
 
@@ -288,7 +292,8 @@ class DalyBmsCanNode(Node):
                 if offset + 1 >= len(data):
                     break
                 raw_mv = (data[offset] << 8) | data[offset + 1]
-                cell_index = frame * 3 + i
+                # Daly frames: frame = 1..N, each frame has 3 cells
+                cell_index = (frame - 1) * 3 + i  # 0-based
 
                 if cell_index >= len(self.cell_voltages):
                     self.cell_voltages.extend(
@@ -303,16 +308,29 @@ class DalyBmsCanNode(Node):
         frame = data[0]
 
         with self._lock:
+            # If we know how many sensors we actually have, cap to that.
+            max_sensors = self.temp_sensors or 0
+
             for pos in range(1, len(data)):
-                temp_raw = data[pos]
-                temp_c = temp_raw - 40
                 temp_index = frame * 7 + (pos - 1)
+
+                if max_sensors and temp_index >= max_sensors:
+                    # Remaining bytes are padding; ignore.
+                    break
+
+                temp_raw = data[pos]
+                if temp_raw == 0xFF:
+                    # 0xFF means "no sensor / invalid" on your pack.
+                    continue
+
+                temp_c = temp_raw - 40
 
                 if temp_index >= len(self.cell_temperatures):
                     self.cell_temperatures.extend(
                         [0.0] * (temp_index + 1 - len(self.cell_temperatures))
                     )
                 self.cell_temperatures[temp_index] = float(temp_c)
+
 
     def _decode_0x97(self, data: bytes) -> None:
         if len(data) < 8:
