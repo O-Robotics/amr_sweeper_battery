@@ -43,7 +43,9 @@ sudo ip link set can0 up
 ```
 
 Run the Node
+```bash
 ros2 launch amr_sweeper_battery battery.launch.py
+```
 
 <h3>Topics</h3>
 
