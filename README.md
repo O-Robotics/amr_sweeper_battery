@@ -35,7 +35,7 @@ colcon build --packages-select amr_sweeper_battery
 source install/setup.bash
 ```
 
-Bring up CAN
+Bring up CAN if not already running
 ```bash
 sudo ip link set can0 down
 sudo ip link set can0 type can bitrate 250000
