@@ -131,3 +131,11 @@ ros2 launch amr_sweeper_battery battery.launch.py
     </tr>
   </tbody>
 </table>
+
+
+
+TODO:
+
+- Add a guard for if the CAN interface is missing, so the node spins but flags a warning that there is no CAN interface.
+- Add a guard for if there is no battery responding over CANbus, so the node spins but flags a warning that the battery is not responding.  
+
