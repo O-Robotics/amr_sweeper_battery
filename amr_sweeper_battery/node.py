@@ -163,30 +163,46 @@ class DalyBmsCanNode(Node):
 
     # --- Timer --------------------------------------------------------------
 
-    def _on_timer(self) -> None:
-        # If no CAN bus yet, try to bring it up and (optionally) warn
-        if self.bus is None:
-            # Won't spam warnings every cycle
-            if not self._missing_can_warned:
-                self.get_logger().warn(
-                    f"No CAN interface '{self.can_interface}' detected yet; "
-                    "battery data will not be updated until it appears."
-                )
-                self._missing_can_warned = True
+def _on_timer(self) -> None:
+    if self.bus is None:
+        # Log once
+        if not self._missing_can_warned:
+            self.get_logger().warn(
+                f"No CAN interface '{self.can_interface}' detected yet; "
+                "battery data will not be updated until it appears."
+            )
+            self._missing_can_warned = True
 
-            # Retry without extra log spam on every timer tick
-            self._setup_can_bus(log_failure=False)
-            return
+        # --- NEW: publish a diagnostic warning ---
+        diag_array = DiagnosticArray()
+        diag_array.header.stamp = self.get_clock().now().to_msg()
 
-        # Normal operation: bus is available
-        for data_id in self.DATA_IDS:
-            try:
-                self._send_request(data_id)
-            except can.CanError as exc:
-                self.get_logger().warn(f"CAN TX failed for 0x{data_id:02X}: {exc}")
+        status = DiagnosticStatus()
+        status.name = "daly_bms_health"
+        status.hardware_id = "daly_bms_can"
+        status.level = DiagnosticStatus.WARN  # or ERROR if you prefer
+        status.message = (
+            f"No CAN interface '{self.can_interface}' detected; "
+            "battery data is unavailable."
+        )
 
-        self._publish_battery_state()
-        self._publish_battery_health()
+        diag_array.status.append(status)
+        self.health_pub.publish(diag_array)
+        # --- END NEW ---
+
+        # Retry bringing up CAN, but don't spam logs
+        self._setup_can_bus(log_failure=False)
+        return
+
+    # Normal operation if bus is available
+    for data_id in self.DATA_IDS:
+        try:
+            self._send_request(data_id)
+        except can.CanError as exc:
+            self.get_logger().warn(f"CAN TX failed for 0x{data_id:02X}: {exc}")
+
+    self._publish_battery_state()
+    self._publish_battery_health()
 
     def _send_request(self, data_id: int) -> None:
         arb_id = self._make_pc_to_bms_id(data_id)
