@@ -38,17 +38,23 @@ class DalyBmsCanNode(Node):
         self.bms_addr = int(self.get_parameter("bms_address").get_parameter_value().integer_value)
         self.pc_addr = int(self.get_parameter("pc_address").get_parameter_value().integer_value)
 
+        # Store for later retries
+        self.can_interface = can_interface
+        self.bus: Optional[can.BusABC] = None
+        self.notifier: Optional[can.Notifier] = None
+        self._missing_can_warned: bool = False
+
         self.get_logger().info(
             f"Using interface {can_interface}, 29-bit IDs, "
             f"prio=0x{self.priority:02X}, BMS=0x{self.bms_addr:02X}, PC=0x{self.pc_addr:02X}"
         )
 
-        # CAN bus (bitrate is configured externally via ip link)
-        self.bus = can.interface.Bus(
-            channel=can_interface,
-            bustype="socketcan",
-            receive_own_messages=False,
-        )
+        # Try to set up CAN once at startup. If this fails, node still runs.
+        if not self._setup_can_bus():
+            self.get_logger().warn(
+                f"CAN interface '{self.can_interface}' is not available at startup; "
+                "will keep retrying in the background."
+            )
 
         # State storage
         self._lock = threading.Lock()
@@ -97,16 +103,45 @@ class DalyBmsCanNode(Node):
         self.batt_pub = self.create_publisher(BatteryState, "battery_state", 10)
         self.health_pub = self.create_publisher(DiagnosticArray, "battery_health", 10)
 
-        # CAN listener
-        listener = _DalyCanListener(self)
-        self.notifier = can.Notifier(self.bus, [listener], 1)
-
         # 1 Hz timer
         self.timer = self.create_timer(timer_period, self._on_timer)
 
         self.get_logger().info("amr_sweeper_battery node started.")
 
     # --- CAN ID helpers -----------------------------------------------------
+
+    def _setup_can_bus(self, log_failure: bool = True) -> bool:
+        """
+        Try to (re-)create the CAN bus and notifier.
+
+        Returns True if the bus is ready, False otherwise.
+        """
+        # Already set up
+        if self.bus is not None:
+            return True
+
+        try:
+            self.bus = can.interface.Bus(
+                channel=self.can_interface,
+                bustype="socketcan",
+                receive_own_messages=False,
+            )
+        except (OSError, can.CanError) as exc:
+            if log_failure:
+                self.get_logger().warn(
+                    f"Failed to open CAN interface '{self.can_interface}': {exc}. "
+                    "Will retry periodically."
+                )
+            return False
+
+        # CAN listener
+        listener = _DalyCanListener(self)
+        self.notifier = can.Notifier(self.bus, [listener], 1)
+
+        self.get_logger().info(f"Connected to CAN interface '{self.can_interface}'.")
+        # Reset warning flag if we successfully connected
+        self._missing_can_warned = False
+        return True
 
     def _make_pc_to_bms_id(self, data_id: int) -> int:
         # PC -> BMS: Priority + Data ID + BMS Addr + PC Addr
@@ -129,6 +164,21 @@ class DalyBmsCanNode(Node):
     # --- Timer --------------------------------------------------------------
 
     def _on_timer(self) -> None:
+        # If no CAN bus yet, try to bring it up and (optionally) warn
+        if self.bus is None:
+            # Won't spam warnings every cycle
+            if not self._missing_can_warned:
+                self.get_logger().warn(
+                    f"No CAN interface '{self.can_interface}' detected yet; "
+                    "battery data will not be updated until it appears."
+                )
+                self._missing_can_warned = True
+
+            # Retry without extra log spam on every timer tick
+            self._setup_can_bus(log_failure=False)
+            return
+
+        # Normal operation: bus is available
         for data_id in self.DATA_IDS:
             try:
                 self._send_request(data_id)
@@ -562,7 +612,8 @@ def main(args=None) -> None:
     except KeyboardInterrupt:
         pass
     finally:
-        node.notifier.stop()
+        if node.notifier is not None:
+            node.notifier.stop()
         node.destroy_node()
         rclpy.shutdown()
 
